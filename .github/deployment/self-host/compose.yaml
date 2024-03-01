@@ -17,8 +17,8 @@ services:
       postgres:
         condition: service_healthy
     volumes:
-      - '~/.affine/self-host/config:/root/.affine/config' # custom configurations
-      - '~/.affine/self-host/storage:/root/.affine/storage' # blob storage
+      - '~/.affine/self-host/config:/root/.affine/config'
+      - '~/.affine/self-host/storage:/root/.affine/storage'
     logging:
       driver: json-file
       options:
@@ -42,7 +42,7 @@ services:
     volumes:
       - '~/.affine/self-host/redis:/data'
     healthcheck:
-      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,7 +74,4 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     command: --interval 30 --cleanup --label-enable
-    environment:
-      - WATCHTOWER_CLEANUP=true
-      - WATCHTOWER_LABEL_ENABLE=true
     restart: unless-stopped
