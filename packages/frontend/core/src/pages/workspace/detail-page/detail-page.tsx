@@ -1,6 +1,5 @@
 import { Scrollable } from '@affine/component';
 import { PageDetailSkeleton } from '@affine/component/page-detail-skeleton';
-import { ResizePanel } from '@affine/component/resize-panel';
 import { useBlockSuiteDocMeta } from '@affine/core/hooks/use-block-suite-page-meta';
 import {
   BookmarkService,
@@ -10,6 +9,7 @@ import {
   EmbedYoutubeService,
   ImageService,
 } from '@blocksuite/blocks';
+import { DisposableGroup } from '@blocksuite/global/utils';
 import type { AffineEditorContainer } from '@blocksuite/presets';
 import type { Doc as BlockSuiteDoc } from '@blocksuite/store';
 import {
@@ -20,15 +20,15 @@ import {
   ServiceProviderContext,
   useLiveData,
 } from '@toeverything/infra';
-import { appSettingAtom, Workspace } from '@toeverything/infra';
+import { Workspace } from '@toeverything/infra';
 import { useService } from '@toeverything/infra';
-import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { useSetAtom } from 'jotai';
 import {
   memo,
   type ReactElement,
-  type ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
 } from 'react';
@@ -37,83 +37,54 @@ import type { Map as YMap } from 'yjs';
 
 import { recentPageIdsBaseAtom } from '../../../atoms';
 import { AffineErrorBoundary } from '../../../components/affine/affine-error-boundary';
-import { HubIsland } from '../../../components/affine/hub-island';
 import { GlobalPageHistoryModal } from '../../../components/affine/page-history-modal';
 import { ImagePreviewModal } from '../../../components/image-preview';
 import { PageDetailEditor } from '../../../components/page-detail-editor';
 import { TrashPageFooter } from '../../../components/pure/trash-page-footer';
 import { TopTip } from '../../../components/top-tip';
 import { useRegisterBlocksuiteEditorCommands } from '../../../hooks/affine/use-register-blocksuite-editor-commands';
+import { useActiveBlocksuiteEditor } from '../../../hooks/use-block-suite-editor';
 import { usePageDocumentTitle } from '../../../hooks/use-global-state';
 import { useNavigateHelper } from '../../../hooks/use-navigate-helper';
+import {
+  MultiTabSidebarBody,
+  MultiTabSidebarHeaderSwitcher,
+  type SidebarTabName,
+} from '../../../modules/multi-tab-sidebar';
+import { sidebarTabs } from '../../../modules/multi-tab-sidebar';
+import { RightSidebarViewIsland } from '../../../modules/right-sidebar';
+import {
+  useIsActiveView,
+  ViewBodyIsland,
+  ViewHeaderIsland,
+} from '../../../modules/workbench';
 import { performanceRenderLogger } from '../../../shared';
 import { PageNotFound } from '../../404';
 import * as styles from './detail-page.css';
-import { DetailPageHeader, RightSidebarHeader } from './detail-page-header';
-import {
-  EditorSidebar,
-  editorSidebarOpenAtom,
-  editorSidebarResizingAtom,
-  editorSidebarWidthAtom,
-} from './editor-sidebar';
-
-interface DetailPageLayoutProps {
-  main: ReactNode;
-  header: ReactNode;
-  footer: ReactNode;
-  sidebar: ReactNode;
-}
-
-const MIN_SIDEBAR_WIDTH = 320;
-const MAX_SIDEBAR_WIDTH = 800;
-
-// todo: consider move to a shared place if we also want to reuse the layout for other routes
-const DetailPageLayout = ({
-  main,
-  header,
-  footer,
-  sidebar,
-}: DetailPageLayoutProps): ReactElement => {
-  const [width, setWidth] = useAtom(editorSidebarWidthAtom);
-  const { clientBorder } = useAtomValue(appSettingAtom);
-  const [resizing, setResizing] = useAtom(editorSidebarResizingAtom);
-  const [open, setOpen] = useAtom(editorSidebarOpenAtom);
-
-  return (
-    <div className={styles.root} data-client-border={clientBorder && open}>
-      <div className={styles.mainContainer}>
-        {header}
-        {main}
-        {footer}
-      </div>
-      {sidebar ? (
-        <ResizePanel
-          resizeHandlePos="left"
-          resizeHandleOffset={clientBorder ? 4 : 0}
-          width={width}
-          className={styles.sidebarContainer}
-          onResizing={setResizing}
-          resizing={resizing}
-          open={open}
-          onOpen={setOpen}
-          onWidthChange={setWidth}
-          minWidth={MIN_SIDEBAR_WIDTH}
-          maxWidth={MAX_SIDEBAR_WIDTH}
-        >
-          {sidebar}
-        </ResizePanel>
-      ) : null}
-    </div>
-  );
-};
+import { DetailPageHeader } from './detail-page-header';
 
 const DetailPageImpl = memo(function DetailPageImpl() {
   const page = useService(Doc);
   const pageRecordList = useService(PageRecordList);
   const currentPageId = page.id;
   const { openPage, jumpToTag } = useNavigateHelper();
+  const [editor, setEditor] = useState<AffineEditorContainer | null>(null);
   const currentWorkspace = useService(Workspace);
   const blockSuiteWorkspace = currentWorkspace.blockSuiteWorkspace;
+
+  const isActiveView = useIsActiveView();
+  // TODO: remove jotai here
+  const [_, setActiveBlockSuiteEditor] = useActiveBlocksuiteEditor();
+
+  useEffect(() => {
+    if (isActiveView) {
+      setActiveBlockSuiteEditor(editor);
+    }
+  }, [editor, isActiveView, setActiveBlockSuiteEditor]);
+
+  const [activeTabName, setActiveTabName] = useState<SidebarTabName | null>(
+    null
+  );
 
   const pageMeta = useBlockSuiteDocMeta(blockSuiteWorkspace).find(
     meta => meta.id === page.id
@@ -165,6 +136,8 @@ const DetailPageImpl = memo(function DetailPageImpl() {
 
       // provide page mode and updated date to blocksuite
       const pageService = editorHost.std.spec.getService('affine:page');
+      const disposable = new DisposableGroup();
+
       pageService.getEditorMode = (pageId: string) =>
         pageRecordList.record(pageId).value?.mode.value ?? 'page';
       pageService.getDocUpdatedAt = (pageId: string) => {
@@ -178,15 +151,26 @@ const DetailPageImpl = memo(function DetailPageImpl() {
 
       page.setMode(mode);
       // fixme: it seems pageLinkClicked is not triggered sometimes?
-      const dispose = editor.slots.docLinkClicked.on(({ docId }) => {
-        return openPage(blockSuiteWorkspace.id, docId);
-      });
-      const disposeTagClick = editor.slots.tagClicked.on(({ tagId }) => {
-        jumpToTag(currentWorkspace.id, tagId);
-      });
+      disposable.add(
+        editor.slots.docLinkClicked.on(({ docId }) => {
+          return openPage(blockSuiteWorkspace.id, docId);
+        })
+      );
+      disposable.add(
+        editor.slots.tagClicked.on(({ tagId }) => {
+          jumpToTag(currentWorkspace.id, tagId);
+        })
+      );
+      disposable.add(
+        pageService.slots.editorModeSwitch.on(mode => {
+          page.setMode(mode);
+        })
+      );
+
+      setEditor(editor);
+
       return () => {
-        dispose.dispose();
-        disposeTagClick.dispose();
+        disposable.dispose();
       };
     },
     [
@@ -200,24 +184,23 @@ const DetailPageImpl = memo(function DetailPageImpl() {
     ]
   );
 
+  const isWindowsDesktop = environment.isDesktop && environment.isWindows;
+
   return (
     <>
-      <DetailPageLayout
-        header={
-          <>
-            <DetailPageHeader
-              page={page.blockSuiteDoc}
-              workspace={currentWorkspace}
-              showSidebarSwitch={!isInTrash}
-            />
-            <TopTip pageId={currentPageId} workspace={currentWorkspace} />
-          </>
-        }
-        main={
-          // Add a key to force rerender when page changed, to avoid error boundary persisting.
+      <ViewHeaderIsland>
+        <DetailPageHeader
+          page={page.blockSuiteDoc}
+          workspace={currentWorkspace}
+        />
+      </ViewHeaderIsland>
+      <ViewBodyIsland>
+        <div className={styles.mainContainer}>
+          {/* Add a key to force rerender when page changed, to avoid error boundary persisting. */}
           <AffineErrorBoundary key={currentPageId}>
             <Scrollable.Root>
               <Scrollable.Viewport className={styles.editorContainer}>
+                <TopTip pageId={currentPageId} workspace={currentWorkspace} />
                 <PageDetailEditor
                   pageId={currentPageId}
                   onLoad={onLoad}
@@ -226,25 +209,42 @@ const DetailPageImpl = memo(function DetailPageImpl() {
               </Scrollable.Viewport>
               <Scrollable.Scrollbar />
             </Scrollable.Root>
-            <HubIsland />
           </AffineErrorBoundary>
-        }
-        footer={isInTrash ? <TrashPageFooter pageId={page.id} /> : null}
-        sidebar={
-          !isInTrash ? (
-            <div className={styles.sidebarContainerInner}>
-              <RightSidebarHeader
-                workspace={currentWorkspace}
-                page={page.blockSuiteDoc}
-              />
-              <EditorSidebar
-                workspace={blockSuiteWorkspace}
-                page={page.blockSuiteDoc}
-              />
-            </div>
+          {isInTrash ? <TrashPageFooter pageId={page.id} /> : null}
+        </div>
+      </ViewBodyIsland>
+
+      <RightSidebarViewIsland
+        active={isActiveView}
+        header={
+          !isWindowsDesktop ? (
+            <MultiTabSidebarHeaderSwitcher
+              activeTabName={activeTabName ?? sidebarTabs[0]?.name}
+              setActiveTabName={setActiveTabName}
+              tabs={sidebarTabs}
+            />
           ) : null
         }
+        body={
+          <MultiTabSidebarBody
+            editor={editor}
+            tab={
+              sidebarTabs.find(ext => ext.name === activeTabName) ??
+              sidebarTabs[0]
+            }
+          >
+            {/* Show switcher in body for windows desktop */}
+            {isWindowsDesktop && (
+              <MultiTabSidebarHeaderSwitcher
+                activeTabName={activeTabName ?? sidebarTabs[0]?.name}
+                setActiveTabName={setActiveTabName}
+                tabs={sidebarTabs}
+              />
+            )}
+          </MultiTabSidebarBody>
+        }
       />
+
       <ImagePreviewModal
         pageId={currentPageId}
         workspace={blockSuiteWorkspace}
@@ -270,7 +270,7 @@ export const DetailPage = ({ pageId }: { pageId: string }): ReactElement => {
 
   const [page, setPage] = useState<Doc | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!pageRecord) {
       return;
     }

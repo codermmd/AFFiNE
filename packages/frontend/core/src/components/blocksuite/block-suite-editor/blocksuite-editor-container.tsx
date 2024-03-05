@@ -10,6 +10,7 @@ import clsx from 'clsx';
 import type React from 'react';
 import {
   forwardRef,
+  type RefObject,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -62,7 +63,7 @@ function findBlockElementById(container: HTMLElement, blockId: string) {
 // a workaround for returning the webcomponent for the given block id
 // by iterating over the children of the rendered dom tree
 const useBlockElementById = (
-  container: HTMLElement | null,
+  containerRef: RefObject<HTMLElement | null>,
   blockId: string | undefined,
   timeout = 1000
 ) => {
@@ -74,10 +75,10 @@ const useBlockElementById = (
     let canceled = false;
     const start = Date.now();
     function run() {
-      if (canceled || !container || !blockId) {
+      if (canceled || !containerRef.current || !blockId) {
         return;
       }
-      const element = findBlockElementById(container, blockId);
+      const element = findBlockElementById(containerRef.current, blockId);
       if (element) {
         setBlockElement(element);
       } else if (Date.now() - start < timeout) {
@@ -88,7 +89,7 @@ const useBlockElementById = (
     return () => {
       canceled = true;
     };
-  }, [container, blockId, timeout]);
+  }, [blockId, containerRef, timeout]);
   return blockElement;
 };
 
@@ -200,19 +201,18 @@ export const BlocksuiteEditorContainer = forwardRef<
     }
   }, [affineEditorContainerProxy, ref]);
 
-  const blockElement = useBlockElementById(
-    rootRef.current,
-    defaultSelectedBlockId
-  );
+  const blockElement = useBlockElementById(rootRef, defaultSelectedBlockId);
 
   useEffect(() => {
     if (blockElement) {
       requestIdleCallback(() => {
-        blockElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-          inline: 'center',
-        });
+        if (mode === 'page') {
+          blockElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+            inline: 'center',
+          });
+        }
         const selectManager = affineEditorContainerProxy.host?.selection;
         if (!blockElement.path.length || !selectManager) {
           return;
@@ -223,7 +223,7 @@ export const BlocksuiteEditorContainer = forwardRef<
         selectManager.set([newSelection]);
       });
     }
-  }, [blockElement, affineEditorContainerProxy.host?.selection]);
+  }, [blockElement, affineEditorContainerProxy.host?.selection, mode]);
 
   return (
     <div

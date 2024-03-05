@@ -1,4 +1,3 @@
-import { WorkspaceFallback } from '@affine/component/workspace';
 import { useWorkspace } from '@affine/core/hooks/use-workspace';
 import {
   Workspace,
@@ -11,18 +10,15 @@ import {
   useServiceOptional,
 } from '@toeverything/infra/di';
 import { useLiveData } from '@toeverything/infra/livedata';
-import {
-  type ReactElement,
-  Suspense,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { type ReactElement, Suspense, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { AffineErrorBoundary } from '../../components/affine/affine-error-boundary';
+import { HubIsland } from '../../components/affine/hub-island';
+import { WorkspaceFallback } from '../../components/workspace';
 import { WorkspaceLayout } from '../../layouts/workspace-layout';
-import { WorkbenchRoot } from '../../modules/workbench/workbench-root';
+import { RightSidebarContainer } from '../../modules/right-sidebar';
+import { WorkbenchRoot } from '../../modules/workbench';
 import { CurrentWorkspaceService } from '../../modules/workspace/current-workspace';
 import { performanceRenderLogger } from '../../shared';
 import { PageNotFound } from '../404';
@@ -78,34 +74,15 @@ export const Component = (): ReactElement => {
 
   const currentWorkspace = useServiceOptional(Workspace);
 
-  const [workspaceIsLoading, setWorkspaceIsLoading] = useState(true);
-
-  // hotfix: avoid doing operation, before workspace is loaded
-  useEffect(() => {
-    if (!workspace) {
-      setWorkspaceIsLoading(true);
-      return;
-    }
-    const metaYMap = workspace.blockSuiteWorkspace.doc.getMap('meta');
-
-    const handleYMapChanged = () => {
-      setWorkspaceIsLoading(metaYMap.size === 0);
-    };
-
-    handleYMapChanged();
-
-    metaYMap.observe(handleYMapChanged);
-    return () => {
-      metaYMap.unobserve(handleYMapChanged);
-    };
-  }, [workspace]);
+  //  avoid doing operation, before workspace is loaded
+  const isRootDocLoaded = useLiveData(workspace?.engine.sync.isRootDocLoaded);
 
   // if listLoading is false, we can show 404 page, otherwise we should show loading page.
   if (listLoading === false && meta === undefined) {
     return <PageNotFound />;
   }
 
-  if (!currentWorkspace || workspaceIsLoading) {
+  if (!currentWorkspace || !isRootDocLoaded) {
     return <WorkspaceFallback key="workspaceLoading" />;
   }
 
@@ -115,6 +92,8 @@ export const Component = (): ReactElement => {
         <AffineErrorBoundary height="100vh">
           <WorkspaceLayout>
             <WorkbenchRoot />
+            <RightSidebarContainer />
+            <HubIsland />
           </WorkspaceLayout>
         </AffineErrorBoundary>
       </Suspense>
