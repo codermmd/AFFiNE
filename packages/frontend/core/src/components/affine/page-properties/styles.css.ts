@@ -7,7 +7,7 @@ export const root = style({
   display: 'flex',
   width: '100%',
   justifyContent: 'center',
-  fontFamily: cssVar('fontFamily'),
+  fontFamily: cssVar('fontSansFamily'),
   vars: {
     [propertyNameCellWidth]: '160px',
   },
@@ -97,10 +97,10 @@ export const tableHeaderTimestamp = style({
 });
 
 export const tableHeaderDivider = style({
-  height: '0.5px',
+  height: 0,
+  borderTop: `1px solid ${cssVar('borderColor')}`,
   width: '100%',
   margin: '8px 0',
-  backgroundColor: cssVar('borderColor'),
 });
 
 export const tableBodyRoot = style({

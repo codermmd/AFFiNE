@@ -1,10 +1,14 @@
 import {
-  PageListHeader,
-  useTagMetas,
+  TagPageListHeader,
   VirtualizedPageList,
 } from '@affine/core/components/page-list';
 import { useBlockSuiteDocMeta } from '@affine/core/hooks/use-block-suite-page-meta';
-import { useService } from '@toeverything/infra';
+import { TagService } from '@affine/core/modules/tag';
+import {
+  ViewBodyIsland,
+  ViewHeaderIsland,
+} from '@affine/core/modules/workbench';
+import { LiveData, useLiveData, useService } from '@toeverything/infra';
 import { Workspace } from '@toeverything/infra';
 import { useMemo } from 'react';
 import { useParams } from 'react-router-dom';
@@ -12,26 +16,33 @@ import { useParams } from 'react-router-dom';
 import { PageNotFound } from '../../404';
 import { EmptyPageList } from '../page-list-empty';
 import { TagDetailHeader } from './header';
+import * as styles from './index.css';
 
 export const TagDetail = ({ tagId }: { tagId?: string }) => {
   const currentWorkspace = useService(Workspace);
-  const pageMetas = useBlockSuiteDocMeta(currentWorkspace.blockSuiteWorkspace);
+  const pageMetas = useBlockSuiteDocMeta(currentWorkspace.docCollection);
 
-  const { tags, filterPageMetaByTag } = useTagMetas(
-    currentWorkspace.blockSuiteWorkspace,
-    pageMetas
-  );
-  const tagPageMetas = useMemo(() => {
-    if (tagId) {
-      return filterPageMetaByTag(tagId);
-    }
-    return [];
-  }, [filterPageMetaByTag, tagId]);
+  const tagService = useService(TagService);
+  const currentTagLiveData = tagService.tagByTagId(tagId);
+  const currentTag = useLiveData(currentTagLiveData);
 
-  const currentTag = useMemo(
-    () => tags.find(tag => tag.id === tagId),
-    [tagId, tags]
+  const pageIdsLiveData = useMemo(
+    () =>
+      LiveData.computed(get => {
+        const liveTag = get(currentTagLiveData);
+        if (liveTag?.pageIds) {
+          return get(liveTag.pageIds);
+        }
+        return [];
+      }),
+    [currentTagLiveData]
   );
+  const pageIds = useLiveData(pageIdsLiveData);
+
+  const filteredPageMetas = useMemo(() => {
+    const pageIdsSet = new Set(pageIds);
+    return pageMetas.filter(page => pageIdsSet.has(page.id));
+  }, [pageIds, pageMetas]);
 
   if (!currentTag) {
     return <PageNotFound />;
@@ -39,16 +50,30 @@ export const TagDetail = ({ tagId }: { tagId?: string }) => {
 
   return (
     <>
-      <TagDetailHeader />
-      {tagPageMetas.length > 0 ? (
-        <VirtualizedPageList tag={currentTag} listItem={tagPageMetas} />
-      ) : (
-        <EmptyPageList
-          type="all"
-          heading={<PageListHeader />}
-          blockSuiteWorkspace={currentWorkspace.blockSuiteWorkspace}
-        />
-      )}
+      <ViewHeaderIsland>
+        <TagDetailHeader />
+      </ViewHeaderIsland>
+      <ViewBodyIsland>
+        <div className={styles.body}>
+          {filteredPageMetas.length > 0 ? (
+            <VirtualizedPageList
+              tag={currentTag}
+              listItem={filteredPageMetas}
+            />
+          ) : (
+            <EmptyPageList
+              type="all"
+              heading={
+                <TagPageListHeader
+                  tag={currentTag}
+                  workspaceId={currentWorkspace.id}
+                />
+              }
+              docCollection={currentWorkspace.docCollection}
+            />
+          )}
+        </div>
+      </ViewBodyIsland>
     </>
   );
 };

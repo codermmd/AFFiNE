@@ -17,9 +17,9 @@
     "@affine/debug": "workspace:*",
     "@affine/env": "workspace:*",
     "@affine/templates": "workspace:*",
-    "@blocksuite/blocks": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/global": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/store": "0.13.0-canary-202403050653-934469c",
+    "@blocksuite/blocks": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/global": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/store": "0.13.0-canary-202403140735-2367cd5",
     "foxact": "^0.2.31",
     "jotai": "^2.6.5",
     "jotai-effect": "^0.6.0",
@@ -33,15 +33,15 @@
   "devDependencies": {
     "@affine-test/fixtures": "workspace:*",
     "@affine/templates": "workspace:*",
-    "@blocksuite/lit": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/presets": "0.13.0-canary-202403050653-934469c",
+    "@blocksuite/lit": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/presets": "0.13.0-canary-202403140735-2367cd5",
     "@testing-library/react": "^14.2.1",
     "async-call-rpc": "^6.4.0",
     "react": "^18.2.0",
     "rxjs": "^7.8.1",
     "vite": "^5.1.4",
     "vite-plugin-dts": "3.7.3",
-    "vitest": "1.3.1"
+    "vitest": "1.4.0"
   },
   "peerDependencies": {
     "@affine/templates": "*",
@@ -71,5 +71,5 @@
       "optional": true
     }
   },
-  "version": "0.12.0"
+  "version": "0.14.0"
 }

@@ -2,10 +2,12 @@ import { toast } from '@affine/component';
 import { useBlockSuiteMetaHelper } from '@affine/core/hooks/affine/use-block-suite-meta-helper';
 import { useTrashModalHelper } from '@affine/core/hooks/affine/use-trash-modal-helper';
 import { useBlockSuiteDocMeta } from '@affine/core/hooks/use-block-suite-page-meta';
+import type { Tag } from '@affine/core/modules/tag';
+import { Workbench } from '@affine/core/modules/workbench';
 import type { Collection, Filter } from '@affine/env/filter';
 import { Trans } from '@affine/i18n';
 import { useAFFiNEI18N } from '@affine/i18n/hooks';
-import type { DocMeta, Tag } from '@blocksuite/store';
+import type { DocMeta } from '@blocksuite/store';
 import { useService } from '@toeverything/infra';
 import { Workspace } from '@toeverything/infra';
 import { useCallback, useMemo, useRef, useState } from 'react';
@@ -28,13 +30,12 @@ import {
 
 const usePageOperationsRenderer = () => {
   const currentWorkspace = useService(Workspace);
-  const { setTrashModal } = useTrashModalHelper(
-    currentWorkspace.blockSuiteWorkspace
-  );
+  const { setTrashModal } = useTrashModalHelper(currentWorkspace.docCollection);
   const { toggleFavorite, duplicate } = useBlockSuiteMetaHelper(
-    currentWorkspace.blockSuiteWorkspace
+    currentWorkspace.docCollection
   );
   const t = useAFFiNEI18N();
+  const workbench = useService(Workbench);
 
   const pageOperationsRenderer = useCallback(
     (page: DocMeta) => {
@@ -50,6 +51,7 @@ const usePageOperationsRenderer = () => {
           isPublic={!!page.isPublic}
           onDisablePublicSharing={onDisablePublicSharing}
           link={`/workspace/${currentWorkspace.id}/${page.id}`}
+          onOpenInSplitView={() => workbench.openPage(page.id, { at: 'tail' })}
           onDuplicate={() => {
             duplicate(page.id, false);
           }}
@@ -72,7 +74,14 @@ const usePageOperationsRenderer = () => {
         />
       );
     },
-    [currentWorkspace.id, setTrashModal, t, toggleFavorite, duplicate]
+    [
+      currentWorkspace.id,
+      workbench,
+      duplicate,
+      setTrashModal,
+      toggleFavorite,
+      t,
+    ]
   );
 
   return pageOperationsRenderer;
@@ -97,11 +106,9 @@ export const VirtualizedPageList = ({
   const [showFloatingToolbar, setShowFloatingToolbar] = useState(false);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const currentWorkspace = useService(Workspace);
-  const pageMetas = useBlockSuiteDocMeta(currentWorkspace.blockSuiteWorkspace);
+  const pageMetas = useBlockSuiteDocMeta(currentWorkspace.docCollection);
   const pageOperations = usePageOperationsRenderer();
-  const { isPreferredEdgeless } = usePageHelper(
-    currentWorkspace.blockSuiteWorkspace
-  );
+  const { isPreferredEdgeless } = usePageHelper(currentWorkspace.docCollection);
 
   const filteredPageMetas = useFilteredPageMetas(currentWorkspace, pageMetas, {
     filters,
@@ -155,9 +162,7 @@ export const VirtualizedPageList = ({
     return <PageListHeader />;
   }, [collection, config, currentWorkspace.id, tag]);
 
-  const { setTrashModal } = useTrashModalHelper(
-    currentWorkspace.blockSuiteWorkspace
-  );
+  const { setTrashModal } = useTrashModalHelper(currentWorkspace.docCollection);
 
   const handleMultiDelete = useCallback(() => {
     const pageNameMapping = Object.fromEntries(
@@ -190,7 +195,7 @@ export const VirtualizedPageList = ({
         items={pageMetasToRender}
         rowAsLink
         isPreferredEdgeless={isPreferredEdgeless}
-        blockSuiteWorkspace={currentWorkspace.blockSuiteWorkspace}
+        docCollection={currentWorkspace.docCollection}
         operationsRenderer={pageOperationRenderer}
         itemRenderer={pageItemRenderer}
         headerRenderer={pageHeaderRenderer}

@@ -12,6 +12,8 @@ import { base64ToUint8Array, uint8ArrayToBase64 } from '../utils/base64';
 
 const logger = new DebugLogger('affine:storage:socketio');
 
+(window as any)._TEST_SIMULATE_SYNC_LAG = Promise.resolve();
+
 export class AffineSyncStorage implements SyncStorage {
   name = 'affine-cloud';
 
@@ -40,10 +42,16 @@ export class AffineSyncStorage implements SyncStorage {
   }
 
   handleConnect = () => {
-    this.socket.emit('client-handshake-sync', {
-      workspaceId: this.workspaceId,
-      version: runtimeConfig.appVersion,
-    });
+    this.socket.emit(
+      'client-handshake-sync',
+      {
+        workspaceId: this.workspaceId,
+        version: runtimeConfig.appVersion,
+      },
+      (res: any) => {
+        logger.debug('client handshake finished', res);
+      }
+    );
   };
 
   handleReject = (message: RejectByVersion) => {
@@ -57,6 +65,9 @@ export class AffineSyncStorage implements SyncStorage {
     docId: string,
     state: Uint8Array
   ): Promise<{ data: Uint8Array; state?: Uint8Array } | null> {
+    // for testing
+    await (window as any)._TEST_SIMULATE_SYNC_LAG;
+
     const stateVector = state ? await uint8ArrayToBase64(state) : undefined;
 
     logger.debug('doc-load-v2', {

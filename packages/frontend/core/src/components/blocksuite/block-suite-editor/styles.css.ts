@@ -5,28 +5,10 @@ export const docEditorRoot = style({
   background: cssVar('backgroundPrimaryColor'),
 });
 
-// brings styles of .affine-page-viewport from blocksuite
 export const affineDocViewport = style({
   display: 'flex',
   flexDirection: 'column',
-  userSelect: 'none',
-  containerName: 'viewport',
-  // todo: find out what this does in bs
-  containerType: 'inline-size',
-  background: cssVar('backgroundPrimaryColor'),
-  '@media': {
-    print: {
-      display: 'none',
-      zIndex: -1,
-    },
-  },
-  selectors: {
-    '&[data-doc-viewport="true"]': {
-      overflowX: 'visible',
-      overflowY: 'visible',
-      height: 'auto',
-    },
-  },
+  paddingBottom: '150px',
 });
 
 export const docContainer = style({
@@ -40,6 +22,7 @@ export const docEditorGap = style({
   margin: '0 auto',
   paddingTop: 50,
   paddingBottom: 50,
+  cursor: 'text',
 });
 
 const titleTagBasic = style({

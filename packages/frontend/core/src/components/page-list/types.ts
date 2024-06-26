@@ -1,5 +1,5 @@
 import type { Collection, Tag } from '@affine/env/filter';
-import type { DocMeta, Workspace } from '@blocksuite/store';
+import type { DocCollection, DocMeta } from '@blocksuite/store';
 import type { PropsWithChildren, ReactNode } from 'react';
 import type { To } from 'react-router-dom';
 
@@ -7,8 +7,8 @@ export type ListItem = DocMeta | CollectionMeta | TagMeta;
 
 export interface CollectionMeta extends Collection {
   title: string;
-  createDate?: Date;
-  updatedDate?: Date;
+  createDate?: Date | number;
+  updatedDate?: Date | number;
 }
 
 export type TagMeta = {
@@ -16,8 +16,8 @@ export type TagMeta = {
   title: string;
   color: string;
   pageCount?: number;
-  createDate?: Date;
-  updatedDate?: Date;
+  createDate?: Date | number;
+  updatedDate?: Date | number;
 };
 // TODO: consider reducing the number of props here
 // using type instead of interface to make it Record compatible
@@ -59,8 +59,8 @@ export type TagListItemProps = {
   color: string;
   title: ReactNode; // using ReactNode to allow for rich content rendering
   pageCount?: number;
-  createDate?: Date;
-  updatedDate?: Date;
+  createDate?: Date | number;
+  updatedDate?: Date | number;
   to?: To; // whether or not to render this item as a Link
   draggable?: boolean; // whether or not to allow dragging this item
   selectable?: boolean; // show selection checkbox
@@ -86,7 +86,7 @@ export type DateKey = 'createDate' | 'updatedDate';
 export interface ListProps<T> {
   // required data:
   items: T[];
-  blockSuiteWorkspace: Workspace;
+  docCollection: DocCollection;
   className?: string;
   hideHeader?: boolean; // whether or not to hide the header. default is false (showing header)
   groupBy?: ItemGroupByType | false;
@@ -104,7 +104,7 @@ export interface ListProps<T> {
 
 export interface VirtualizedListProps<T> extends ListProps<T> {
   heading?: ReactNode; // the user provided heading part (non sticky, above the original header)
-  headerRenderer?: () => ReactNode; // the user provided header renderer
+  headerRenderer?: (item?: T) => ReactNode; // the user provided header renderer
   itemRenderer?: (item: T) => ReactNode; // the user provided item renderer
   atTopThreshold?: number; // the threshold to determine whether or not the user has scrolled to the top. default is 0
   atTopStateChange?: (atTop: boolean) => void; // called when the user scrolls to the top or not

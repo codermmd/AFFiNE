@@ -7,6 +7,7 @@
     "test": "test-storybook"
   },
   "dependencies": {
+    "@affine/cli": "workspace:*",
     "@affine/component": "workspace:*",
     "@affine/i18n": "workspace:*",
     "@affine/workspace-impl": "workspace:*",
@@ -22,14 +23,14 @@
     "storybook-addon-react-router-v6": "^2.0.10"
   },
   "devDependencies": {
-    "@blocksuite/block-std": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/blocks": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/global": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/icons": "2.1.44",
-    "@blocksuite/inline": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/lit": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/presets": "0.13.0-canary-202403050653-934469c",
-    "@blocksuite/store": "0.13.0-canary-202403050653-934469c",
+    "@blocksuite/block-std": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/blocks": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/global": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/icons": "2.1.45",
+    "@blocksuite/inline": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/lit": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/presets": "0.13.0-canary-202403140735-2367cd5",
+    "@blocksuite/store": "0.13.0-canary-202403140735-2367cd5",
     "@storybook/addon-actions": "^7.6.17",
     "@storybook/addon-essentials": "^7.6.17",
     "@storybook/addon-interactions": "^7.6.17",
@@ -39,8 +40,7 @@
     "@storybook/builder-vite": "^7.6.17",
     "@storybook/react": "^7.6.17",
     "@storybook/react-vite": "^7.6.17",
-    "@storybook/test-runner": "^0.16.0",
-    "@tomfreudenberg/next-auth-mock": "^0.5.6",
+    "@storybook/test-runner": "^0.17.0",
     "@vanilla-extract/esbuild-plugin": "^2.3.5",
     "@vitejs/plugin-react": "^4.2.1",
     "chromatic": "^11.0.0",
@@ -60,5 +60,5 @@
     "@blocksuite/presets": "*",
     "@blocksuite/store": "*"
   },
-  "version": "0.12.0"
+  "version": "0.14.0"
 }

@@ -1,4 +1,7 @@
-import { createReactComponentFromLit } from '@affine/component';
+import {
+  createReactComponentFromLit,
+  useLitPortalFactory,
+} from '@affine/component';
 import { useJournalInfoHelper } from '@affine/core/hooks/use-journal';
 import {
   BiDirectionalLinkPanel,
@@ -8,9 +11,9 @@ import {
   PageEditor,
 } from '@blocksuite/presets';
 import { type Doc } from '@blocksuite/store';
-import clsx from 'clsx';
 import React, {
   forwardRef,
+  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -65,7 +68,7 @@ export const BlocksuiteDocEditor = forwardRef<
   const docRef = useRef<PageEditor | null>(null);
   const [docPage, setDocPage] =
     useState<HTMLElementTagNameMap['affine-page-root']>();
-  const { isJournal } = useJournalInfoHelper(page.workspace, page.id);
+  const { isJournal } = useJournalInfoHelper(page.collection, page.id);
 
   const onDocRef = useCallback(
     (el: PageEditor) => {
@@ -81,9 +84,11 @@ export const BlocksuiteDocEditor = forwardRef<
     [ref]
   );
 
+  const [litToTemplate, portals] = useLitPortalFactory();
+
   const specs = useMemo(() => {
-    return patchSpecs(docModeSpecs, customRenderers);
-  }, [customRenderers]);
+    return patchSpecs(docModeSpecs, litToTemplate, customRenderers);
+  }, [customRenderers, litToTemplate]);
 
   useEffect(() => {
     // auto focus the title
@@ -103,10 +108,7 @@ export const BlocksuiteDocEditor = forwardRef<
 
   return (
     <div className={styles.docEditorRoot}>
-      <div
-        className={clsx('affine-page-viewport', styles.affineDocViewport)}
-        data-doc-viewport={true}
-      >
+      <div className={styles.affineDocViewport}>
         {!isJournal ? (
           <adapted.DocTitle doc={page} ref={titleRef} />
         ) : (
@@ -128,10 +130,13 @@ export const BlocksuiteDocEditor = forwardRef<
             }}
           ></div>
         ) : null}
-        {docPage ? (
+        {docPage && !page.readonly ? (
           <adapted.BiDirectionalLinkPanel doc={page} pageRoot={docPage} />
         ) : null}
       </div>
+      {portals.map(p => (
+        <Fragment key={p.id}>{p.portal}</Fragment>
+      ))}
     </div>
   );
 });
@@ -140,8 +145,16 @@ export const BlocksuiteEdgelessEditor = forwardRef<
   EdgelessEditor,
   BlocksuiteDocEditorProps
 >(function BlocksuiteEdgelessEditor({ page, customRenderers }, ref) {
+  const [litToTemplate, portals] = useLitPortalFactory();
   const specs = useMemo(() => {
-    return patchSpecs(edgelessModeSpecs, customRenderers);
-  }, [customRenderers]);
-  return <adapted.EdgelessEditor ref={ref} doc={page} specs={specs} />;
+    return patchSpecs(edgelessModeSpecs, litToTemplate, customRenderers);
+  }, [customRenderers, litToTemplate]);
+  return (
+    <>
+      <adapted.EdgelessEditor ref={ref} doc={page} specs={specs} />
+      {portals.map(p => (
+        <Fragment key={p.id}>{p.portal}</Fragment>
+      ))}
+    </>
+  );
 });

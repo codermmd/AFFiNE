@@ -1,15 +1,16 @@
 import { useDocMetaHelper } from '@affine/core/hooks/use-block-suite-page-meta';
 import { useJournalHelper } from '@affine/core/hooks/use-journal';
+import { WorkbenchLink } from '@affine/core/modules/workbench';
 import { useAFFiNEI18N } from '@affine/i18n/hooks';
 import { LinkedPageIcon, TodayIcon } from '@blocksuite/icons';
-import type { Workspace } from '@blocksuite/store';
-import type { PropsWithChildren } from 'react';
-import { Link } from 'react-router-dom';
+import type { DocCollection } from '@blocksuite/store';
+import { type PropsWithChildren } from 'react';
 
 import * as styles from './styles.css';
 
 export interface PageReferenceRendererOptions {
   pageId: string;
+  docCollection: DocCollection;
   pageMetaHelper: ReturnType<typeof useDocMetaHelper>;
   journalHelper: ReturnType<typeof useJournalHelper>;
   t: ReturnType<typeof useAFFiNEI18N>;
@@ -32,6 +33,7 @@ export function pageReferenceRenderer({
     title = localizedJournalDate;
     icon = <TodayIcon className={styles.pageReferenceIcon} />;
   }
+
   return (
     <>
       {icon}
@@ -44,29 +46,27 @@ export function pageReferenceRenderer({
 
 export function AffinePageReference({
   pageId,
-  workspace,
+  docCollection,
   wrapper: Wrapper,
 }: {
-  workspace: Workspace;
+  docCollection: DocCollection;
   pageId: string;
   wrapper?: React.ComponentType<PropsWithChildren>;
 }) {
-  const pageMetaHelper = useDocMetaHelper(workspace);
-  const journalHelper = useJournalHelper(workspace);
+  const pageMetaHelper = useDocMetaHelper(docCollection);
+  const journalHelper = useJournalHelper(docCollection);
   const t = useAFFiNEI18N();
   const el = pageReferenceRenderer({
     pageId,
     pageMetaHelper,
     journalHelper,
+    docCollection,
     t,
   });
 
   return (
-    <Link
-      to={`/workspace/${workspace.id}/${pageId}`}
-      className={styles.pageReferenceLink}
-    >
+    <WorkbenchLink to={`/${pageId}`} className={styles.pageReferenceLink}>
       {Wrapper ? <Wrapper>{el}</Wrapper> : el}
-    </Link>
+    </WorkbenchLink>
   );
 }

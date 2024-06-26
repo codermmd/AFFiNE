@@ -1,5 +1,4 @@
 import { AnimatedDeleteIcon } from '@affine/component';
-import { Menu } from '@affine/component/ui/menu';
 import { useAsyncCallback } from '@affine/core/hooks/affine-async-hooks';
 import { CollectionService } from '@affine/core/modules/collection';
 import { apis, events } from '@affine/electron-api';
@@ -8,12 +7,11 @@ import { FolderIcon, SettingsIcon } from '@blocksuite/icons';
 import { type Doc } from '@blocksuite/store';
 import { useDroppable } from '@dnd-kit/core';
 import { useLiveData, useService, type Workspace } from '@toeverything/infra';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtomValue } from 'jotai';
 import { nanoid } from 'nanoid';
 import type { HTMLAttributes, ReactElement } from 'react';
-import { forwardRef, Suspense, useCallback, useEffect } from 'react';
+import { forwardRef, useCallback, useEffect } from 'react';
 
-import { openWorkspaceListModalAtom } from '../../atoms';
 import { useAppSettingHelper } from '../../hooks/affine/use-app-setting-helper';
 import { useDeleteCollectionInfo } from '../../hooks/affine/use-delete-collection-info';
 import { getDropItemId } from '../../hooks/affine/use-sidebar-drag';
@@ -41,8 +39,7 @@ import { CollectionsList } from '../pure/workspace-slider-bar/collections';
 import { AddCollectionButton } from '../pure/workspace-slider-bar/collections/add-collection-button';
 import { AddFavouriteButton } from '../pure/workspace-slider-bar/favorite/add-favourite-button';
 import FavoriteList from '../pure/workspace-slider-bar/favorite/favorite-list';
-import { UserWithWorkspaceList } from '../pure/workspace-slider-bar/user-with-workspace-list';
-import { WorkspaceCard } from '../pure/workspace-slider-bar/workspace-card';
+import { WorkspaceSelector } from '../workspace-selector';
 import ImportPage from './import-page';
 import { AppSidebarJournalButton } from './journal-button';
 import { UpdaterButton } from './updater-button';
@@ -100,11 +97,8 @@ export const RootAppSidebar = ({
 }: RootAppSidebarProps): ReactElement => {
   const currentWorkspaceId = currentWorkspace.id;
   const { appSettings } = useAppSettingHelper();
-  const blockSuiteWorkspace = currentWorkspace.blockSuiteWorkspace;
+  const docCollection = currentWorkspace.docCollection;
   const t = useAFFiNEI18N();
-  const [openUserWorkspaceList, setOpenUserWorkspaceList] = useAtom(
-    openWorkspaceListModalAtom
-  );
   const currentPath = useLiveData(useService(Workbench).location).pathname;
 
   const onClickNewPage = useAsyncCallback(async () => {
@@ -114,7 +108,7 @@ export const RootAppSidebar = ({
   }, [createPage, openPage]);
 
   const { trashModal, setTrashModal, handleOnConfirm } =
-    useTrashModalHelper(blockSuiteWorkspace);
+    useTrashModalHelper(docCollection);
   const deletePageTitles = trashModal.pageTitles;
   const trashConfirmOpen = trashModal.open;
   const onTrashConfirmOpenChange = useCallback(
@@ -149,10 +143,6 @@ export const RootAppSidebar = ({
   const trashDroppable = useDroppable({
     id: dropItemId,
   });
-  const closeUserWorkspaceList = useCallback(() => {
-    setOpenUserWorkspaceList(false);
-  }, [setOpenUserWorkspaceList]);
-  const userInfo = useDeleteCollectionInfo();
 
   const collection = useService(CollectionService);
   const { node, open } = useEditCollectionName({
@@ -164,12 +154,13 @@ export const RootAppSidebar = ({
       .then(name => {
         const id = nanoid();
         collection.addCollection(createEmptyCollection(id, { name }));
-        navigateHelper.jumpToCollection(blockSuiteWorkspace.id, id);
+        navigateHelper.jumpToCollection(docCollection.id, id);
       })
       .catch(err => {
         console.error(err);
       });
-  }, [blockSuiteWorkspace.id, collection, navigateHelper, open]);
+  }, [docCollection.id, collection, navigateHelper, open]);
+  const userInfo = useDeleteCollectionInfo();
 
   const allPageActive = currentPath === '/all';
 
@@ -192,31 +183,7 @@ export const RootAppSidebar = ({
         titles={deletePageTitles}
       />
       <SidebarContainer>
-        <Menu
-          rootOptions={{
-            open: openUserWorkspaceList,
-          }}
-          items={
-            <Suspense>
-              <UserWithWorkspaceList onEventEnd={closeUserWorkspaceList} />
-            </Suspense>
-          }
-          contentOptions={{
-            // hide trigger
-            sideOffset: -58,
-            onInteractOutside: closeUserWorkspaceList,
-            onEscapeKeyDown: closeUserWorkspaceList,
-            style: {
-              width: '300px',
-            },
-          }}
-        >
-          <WorkspaceCard
-            onClick={useCallback(() => {
-              setOpenUserWorkspaceList(true);
-            }, [setOpenUserWorkspaceList])}
-          />
-        </Menu>
+        <WorkspaceSelector />
         <QuickSearchInput
           data-testid="slider-bar-quick-search-button"
           onClick={onOpenQuickSearchModal}
@@ -231,7 +198,7 @@ export const RootAppSidebar = ({
           </span>
         </RouteMenuLinkItem>
         <AppSidebarJournalButton
-          workspace={currentWorkspace.blockSuiteWorkspace}
+          docCollection={currentWorkspace.docCollection}
         />
         {runtimeConfig.enableNewSettingModal ? (
           <MenuItem
@@ -248,31 +215,33 @@ export const RootAppSidebar = ({
 
       <SidebarScrollableContainer>
         <CategoryDivider label={t['com.affine.rootAppSidebar.favorites']()}>
-          <AddFavouriteButton workspace={blockSuiteWorkspace} />
+          <AddFavouriteButton docCollection={docCollection} />
         </CategoryDivider>
-        <FavoriteList workspace={blockSuiteWorkspace} />
+        <FavoriteList docCollection={docCollection} />
         <CategoryDivider label={t['com.affine.rootAppSidebar.collections']()}>
           <AddCollectionButton node={node} onClick={handleCreateCollection} />
         </CategoryDivider>
         <CollectionsList
-          workspace={blockSuiteWorkspace}
+          docCollection={docCollection}
           info={userInfo}
           onCreate={handleCreateCollection}
         />
         <CategoryDivider label={t['com.affine.rootAppSidebar.others']()} />
         {/* fixme: remove the following spacer */}
         <div style={{ height: '4px' }} />
-        <RouteMenuLinkItem
-          ref={trashDroppable.setNodeRef}
-          icon={<AnimatedDeleteIcon closed={trashDroppable.isOver} />}
-          active={trashActive}
-          path={paths.trash(currentWorkspaceId)}
-        >
-          <span data-testid="trash-page">
-            {t['com.affine.workspaceSubPath.trash']()}
-          </span>
-        </RouteMenuLinkItem>
-        <ImportPage blocksuiteWorkspace={blockSuiteWorkspace} />
+        <div style={{ padding: '0 8px' }}>
+          <RouteMenuLinkItem
+            ref={trashDroppable.setNodeRef}
+            icon={<AnimatedDeleteIcon closed={trashDroppable.isOver} />}
+            active={trashActive}
+            path={paths.trash(currentWorkspaceId)}
+          >
+            <span data-testid="trash-page">
+              {t['com.affine.workspaceSubPath.trash']()}
+            </span>
+          </RouteMenuLinkItem>
+          <ImportPage docCollection={docCollection} />
+        </div>
       </SidebarScrollableContainer>
       <SidebarContainer>
         {environment.isDesktop ? <UpdaterButton /> : <AppDownloadButton />}

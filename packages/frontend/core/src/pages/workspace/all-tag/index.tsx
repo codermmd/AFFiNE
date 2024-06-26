@@ -1,24 +1,48 @@
-import { useTagMetas } from '@affine/core/components/page-list';
 import {
   TagListHeader,
   VirtualizedTagList,
 } from '@affine/core/components/page-list/tags';
-import { useBlockSuiteDocMeta } from '@affine/core/hooks/use-block-suite-page-meta';
-import { useService } from '@toeverything/infra';
-import { Workspace } from '@toeverything/infra';
+import { CreateOrEditTag } from '@affine/core/components/page-list/tags/create-tag';
+import type { TagMeta } from '@affine/core/components/page-list/types';
+import { TagService } from '@affine/core/modules/tag';
+import { useLiveData, useService } from '@toeverything/infra';
+import { useCallback, useState } from 'react';
 
 import { ViewBodyIsland, ViewHeaderIsland } from '../../../modules/workbench';
 import { EmptyTagList } from '../page-list-empty';
 import * as styles from './all-tag.css';
 import { AllTagHeader } from './header';
 
-export const AllTag = () => {
-  const currentWorkspace = useService(Workspace);
-  const pageMetas = useBlockSuiteDocMeta(currentWorkspace.blockSuiteWorkspace);
+const EmptyTagListHeader = () => {
+  const [showCreateTagInput, setShowCreateTagInput] = useState(false);
+  const handleOpen = useCallback(() => {
+    setShowCreateTagInput(true);
+  }, [setShowCreateTagInput]);
 
-  const { tags, tagMetas, deleteTags } = useTagMetas(
-    currentWorkspace.blockSuiteWorkspace,
-    pageMetas
+  return (
+    <div>
+      <TagListHeader onOpen={handleOpen} />
+      <CreateOrEditTag
+        open={showCreateTagInput}
+        onOpenChange={setShowCreateTagInput}
+      />
+    </div>
+  );
+};
+
+export const AllTag = () => {
+  const tagService = useService(TagService);
+  const tags = useLiveData(tagService.tags);
+
+  const tagMetas: TagMeta[] = useLiveData(tagService.tagMetas);
+
+  const handleDelete = useCallback(
+    (tagIds: string[]) => {
+      tagIds.forEach(tagId => {
+        tagService.deleteTag(tagId);
+      });
+    },
+    [tagService]
   );
 
   return (
@@ -32,10 +56,10 @@ export const AllTag = () => {
             <VirtualizedTagList
               tags={tags}
               tagMetas={tagMetas}
-              onTagDelete={deleteTags}
+              onTagDelete={handleDelete}
             />
           ) : (
-            <EmptyTagList heading={<TagListHeader />} />
+            <EmptyTagList heading={<EmptyTagListHeader />} />
           )}
         </div>
       </ViewBodyIsland>
